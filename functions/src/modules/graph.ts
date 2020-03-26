@@ -1,5 +1,6 @@
 import * as functions from 'firebase-functions';
 import { GraphQLClient } from 'graphql-request';
+import { notify } from './notify';
 
 const gql = String.raw;
 
@@ -11,31 +12,6 @@ const client = new GraphQLClient(endpoint, {
     authorization: `Bearer ${functions.config().graph.token}`
   }
 });
-
-// ********************************************************* //
-
-interface createKnows {
-  fromUid: string;
-  toUid: string;
-}
-interface createKnowsPayload {
-  uid: string;
-}
-
-export const createKnows = functions
-  .region('europe-west1')
-  .https.onCall(async (data: createKnows) => {
-    const query = gql`
-      mutation createKnows($fromUid: ID!, $toUid: ID!) {
-        CreateKnows(input: { fromUid: $fromUid, toUid: $toUid }) {
-          uid
-        }
-      }
-    `;
-
-    const { uid } = await client.request<createKnowsPayload>(query, data);
-    return uid;
-  });
 
 // ********************************************************* //
 
@@ -65,106 +41,49 @@ export const registerUserWithGraph = (payload: registerUserWithGraph) => {
 
 // ********************************************************* //
 
-interface logContactVariables {
-  input: {
-    fromUid: string;
-    toUid: string;
-    yyyy: string;
-    mm: string;
-    dd: string;
-  };
+interface sendNotifications {
+  uid: string;
 }
 
-interface logContact {
-  fromUid: string;
-  toUid: string;
-  date: Date;
+interface sendNotificationsPayload {
+  direct: string[];
+  indirect: string[];
 }
 
-interface logContactPayload {
-  LogContact: {
-    id: string;
-    date: {
-      formatted: string;
-    };
-    contactWith: [
-      {
-        uid: string;
+export enum ContactNature {
+  Direct = 0,
+  Indirect = 1
+}
+
+export const sendNotifications = functions
+  .region('europe-west1')
+  .https.onCall(async (payload: sendNotifications) => {
+    const query = gql`
+      query RecentContactsForUser($uid: ID!) {
+        direct: RecentDirectContactsForPerson(input: { uid: $uid }) {
+          uid
+        }
+        indirect: RecentIndirectContactsForPerson(input: { uid: $uid }) {
+          uid
+        }
       }
+    `;
+
+    const { direct, indirect } = await client.request<sendNotificationsPayload>(
+      query,
+      payload
+    );
+
+    const allContact = [
+      ...direct.map((id: string) => ({
+        id,
+        contactNature: ContactNature.Direct
+      })),
+      ...indirect.map((id: string) => ({
+        id,
+        contactNature: ContactNature.Indirect
+      }))
     ];
-  };
-}
 
-export const logContact = functions
-  .region('europe-west1')
-  .https.onCall((data: logContact) => {
-    const query = gql`
-      mutation logContact($input: LogContactInput!) {
-        LogContact(input: $input) {
-          id
-          date {
-            formatted
-          }
-          contactWith {
-            uid
-          }
-        }
-      }
-    `;
-
-    const { date, fromUid, toUid } = data;
-    const variables: logContactVariables = {
-      input: {
-        fromUid,
-        toUid,
-        yyyy: `${date.getFullYear()}`,
-        // https://stackoverflow.com/a/3605248
-        mm: `${('0' + (date.getMonth() + 1)).slice(-2)}`,
-        dd: `${('0' + date.getDate()).slice(-2)}`
-      }
-    };
-
-    return client
-      .request<logContactPayload>(query, variables)
-      .then(({ LogContact }) => LogContact);
-  });
-
-interface unlogContactPayload {
-  UnlogContact: {
-    id: String;
-    date: {
-      formatted: String;
-    };
-  };
-}
-
-export const unlogContact = functions
-  .region('europe-west1')
-  .https.onCall((data: logContact) => {
-    const query = gql`
-      mutation unlogContact($input: LogContactInput!) {
-        UnlogContact(input: $input) {
-          id
-          date {
-            formatted
-          }
-        }
-      }
-    `;
-
-    const { date, fromUid, toUid } = data;
-    const variables: logContactVariables = {
-      input: {
-        fromUid,
-        toUid,
-        yyyy: `${date.getFullYear()}`,
-        // https://stackoverflow.com/a/3605248
-        mm: `${('0' + (date.getMonth() + 1)).slice(-2)}`,
-        dd: `${('0' + date.getDate()).slice(-2)}`
-      }
-    };
-
-    return client
-      .request<unlogContactPayload>(query, variables)
-      .then(({ UnlogContact }) => UnlogContact);
+    return Promise.all(notify(allContact));
   });
