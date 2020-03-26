@@ -5,7 +5,7 @@ admin.initializeApp(functions.config().firebase);
 import * as graph from './modules/graph';
 import * as users from './modules/users';
 import * as sms from './modules/sms';
-import * as email from './modules/email';
+import * as email from './modules/notify';
 
 exports.graph = graph;
 exports.users = users;

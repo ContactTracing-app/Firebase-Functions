@@ -14,31 +14,6 @@ const client = new GraphQLClient(endpoint, {
 
 // ********************************************************* //
 
-interface createKnows {
-  fromUid: string;
-  toUid: string;
-}
-interface createKnowsPayload {
-  uid: string;
-}
-
-export const createKnows = functions
-  .region('europe-west1')
-  .https.onCall(async (data: createKnows) => {
-    const query = gql`
-      mutation createKnows($fromUid: ID!, $toUid: ID!) {
-        CreateKnows(input: { fromUid: $fromUid, toUid: $toUid }) {
-          uid
-        }
-      }
-    `;
-
-    const { uid } = await client.request<createKnowsPayload>(query, data);
-    return uid;
-  });
-
-// ********************************************************* //
-
 interface registerUserPayload {
   newPerson: {
     uid: String;
@@ -65,106 +40,50 @@ export const registerUserWithGraph = (payload: registerUserWithGraph) => {
 
 // ********************************************************* //
 
-interface logContactVariables {
-  input: {
-    fromUid: string;
-    toUid: string;
-    yyyy: string;
-    mm: string;
-    dd: string;
-  };
+interface sendNotificationsPayload {
+  direct: string[];
+  indirect: string[];
 }
 
-interface logContact {
-  fromUid: string;
-  toUid: string;
-  date: Date;
+export enum ContactNature {
+  Direct = 0,
+  Indirect = 1
 }
 
-interface logContactPayload {
-  LogContact: {
-    id: string;
-    date: {
-      formatted: string;
-    };
-    contactWith: [
-      {
-        uid: string;
-      }
-    ];
-  };
+export interface Notification {
+  uid: string;
+  contactNature: ContactNature;
 }
 
-export const logContact = functions
-  .region('europe-west1')
-  .https.onCall((data: logContact) => {
-    const query = gql`
-      mutation logContact($input: LogContactInput!) {
-        LogContact(input: $input) {
-          id
-          date {
-            formatted
-          }
-          contactWith {
-            uid
-          }
-        }
+export const collectNotificationsFromGraph = async (payload: {
+  uid: string;
+}) => {
+  const query = gql`
+    query RecentContactsForUser($uid: ID!) {
+      direct: RecentDirectContactsForPerson(input: { uid: $uid }) {
+        uid
       }
-    `;
-
-    const { date, fromUid, toUid } = data;
-    const variables: logContactVariables = {
-      input: {
-        fromUid,
-        toUid,
-        yyyy: `${date.getFullYear()}`,
-        // https://stackoverflow.com/a/3605248
-        mm: `${('0' + (date.getMonth() + 1)).slice(-2)}`,
-        dd: `${('0' + date.getDate()).slice(-2)}`
+      indirect: RecentIndirectContactsForPerson(input: { uid: $uid }) {
+        uid
       }
-    };
+    }
+  `;
 
-    return client
-      .request<logContactPayload>(query, variables)
-      .then(({ LogContact }) => LogContact);
-  });
+  const { direct, indirect } = await client.request<sendNotificationsPayload>(
+    query,
+    payload
+  );
 
-interface unlogContactPayload {
-  UnlogContact: {
-    id: String;
-    date: {
-      formatted: String;
-    };
-  };
-}
+  const allContacts = [
+    ...direct.map(
+      (uid: string) =>
+        ({ uid, contactNature: ContactNature.Direct } as Notification)
+    ),
+    ...indirect.map(
+      (uid: string) =>
+        ({ uid, contactNature: ContactNature.Indirect } as Notification)
+    )
+  ];
 
-export const unlogContact = functions
-  .region('europe-west1')
-  .https.onCall((data: logContact) => {
-    const query = gql`
-      mutation unlogContact($input: LogContactInput!) {
-        UnlogContact(input: $input) {
-          id
-          date {
-            formatted
-          }
-        }
-      }
-    `;
-
-    const { date, fromUid, toUid } = data;
-    const variables: logContactVariables = {
-      input: {
-        fromUid,
-        toUid,
-        yyyy: `${date.getFullYear()}`,
-        // https://stackoverflow.com/a/3605248
-        mm: `${('0' + (date.getMonth() + 1)).slice(-2)}`,
-        dd: `${('0' + date.getDate()).slice(-2)}`
-      }
-    };
-
-    return client
-      .request<unlogContactPayload>(query, variables)
-      .then(({ UnlogContact }) => UnlogContact);
-  });
+  return allContacts;
+};

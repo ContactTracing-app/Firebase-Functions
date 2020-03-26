@@ -2,27 +2,49 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { registerUserWithGraph } from './graph';
 
-const db = admin.firestore();
+const fs = admin.firestore();
+const db = admin.database();
 
-export const setupNewUser = functions.auth.user().onCreate(async user => {
-  const { uid, displayName, photoURL, email } = user;
-
-  const profile = {
-    displayName,
-    photoURL,
-    email,
-    preferences: {
-      contact_via_email: true,
-      contact_via_phone: true
-    }
+export interface Account {
+  email?: string;
+  sms_number?: string;
+  preferences: {
+    contact_via_email: boolean;
+    contact_via_sms: boolean;
   };
+}
 
-  await db
-    .collection('profiles')
-    .doc(uid)
-    .set(profile);
+export interface Profile {
+  displayName?: string;
+  photoURL?: string;
+}
 
-  const resp = await registerUserWithGraph({ uid });
+export const setupNewUser = functions
+  .region('europe-west1')
+  .auth.user()
+  .onCreate(async user => {
+    const { uid, displayName, photoURL, email } = user;
 
-  return resp;
-});
+    const account: Account = {
+      email,
+      preferences: {
+        contact_via_email: true,
+        contact_via_sms: true
+      }
+    };
+
+    fs.collection('accounts')
+      .doc(uid)
+      .set(account);
+
+    const profile: Profile = {
+      displayName,
+      photoURL
+    };
+
+    db.ref(`profiles/${uid}`).set(profile);
+
+    const resp = await registerUserWithGraph({ uid });
+
+    return resp;
+  });
