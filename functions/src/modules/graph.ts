@@ -1,6 +1,5 @@
 import * as functions from 'firebase-functions';
 import { GraphQLClient } from 'graphql-request';
-import { notify } from './notify';
 
 const gql = String.raw;
 
