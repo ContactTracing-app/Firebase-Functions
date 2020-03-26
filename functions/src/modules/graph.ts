@@ -41,10 +41,6 @@ export const registerUserWithGraph = (payload: registerUserWithGraph) => {
 
 // ********************************************************* //
 
-interface sendNotifications {
-  uid: string;
-}
-
 interface sendNotificationsPayload {
   direct: string[];
   indirect: string[];
@@ -55,24 +51,40 @@ export enum ContactNature {
   Indirect = 1
 }
 
-export const sendNotifications = functions
-  .region('europe-west1')
-  .https.onCall(async (payload: sendNotifications) => {
-    const query = gql`
-      query RecentContactsForUser($uid: ID!) {
-        direct: RecentDirectContactsForPerson(input: { uid: $uid }) {
-          uid
-        }
-        indirect: RecentIndirectContactsForPerson(input: { uid: $uid }) {
-          uid
-        }
+export interface Notification {
+  uid: string;
+  contactNature: ContactNature;
+}
+
+export const collectNotificationsFromGraph = async (payload: {
+  uid: string;
+}) => {
+  const query = gql`
+    query RecentContactsForUser($uid: ID!) {
+      direct: RecentDirectContactsForPerson(input: { uid: $uid }) {
+        uid
       }
-    `;
+      indirect: RecentIndirectContactsForPerson(input: { uid: $uid }) {
+        uid
+      }
+    }
+  `;
 
-    const { direct, indirect } = await client.request<sendNotificationsPayload>(
-      query,
-      payload
-    );
+  const { direct, indirect } = await client.request<sendNotificationsPayload>(
+    query,
+    payload
+  );
 
-    return Promise.all(notify(allContact));
-  });
+  const allContacts = [
+    ...direct.map(
+      (uid: string) =>
+        ({ uid, contactNature: ContactNature.Direct } as Notification)
+    ),
+    ...indirect.map(
+      (uid: string) =>
+        ({ uid, contactNature: ContactNature.Indirect } as Notification)
+    )
+  ];
+
+  return allContacts;
+};

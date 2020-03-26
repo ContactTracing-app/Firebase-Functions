@@ -1,12 +1,15 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { Account } from './users';
+import { collectNotificationsFromGraph } from './graph';
+import { notifyWithEmail } from './email';
+import { notifyWithSMS } from './sms';
 
 const fs = admin.firestore();
 
-export const sendNotifications = functions
-  .region('europe-west1')
-  .https.onCall(async (payload: sendNotifications) => {});
+interface sendNotifications {
+  uid: string;
+}
 
 export const retrieveAccountForUid = async (uid: string) => {
   const doc = await fs
@@ -21,34 +24,37 @@ export const retrieveAccountForUid = async (uid: string) => {
   return account;
 };
 
-export const notify = async (uid: string) => {
-  const allContact = [
-    ...direct.map((id: string) => ({
-      id,
-      contactNature: ContactNature.Direct
-    })),
-    ...indirect.map((id: string) => ({
-      id,
-      contactNature: ContactNature.Indirect
-    }))
-  ];
+export const sendNotifications = functions
+  .region('europe-west1')
+  .https.onCall(async (payload: sendNotifications) => {
+    const allContacts = await collectNotificationsFromGraph({
+      uid: payload.uid
+    });
 
-  const account = await retrieveAccountForUid(uid);
+    allContacts.forEach(async ({ uid, contactNature }) => {
+      const account = await retrieveAccountForUid(uid);
+      if (!account) {
+        return;
+      }
 
-  if (!account) {
-    return;
-  }
+      const {
+        sms_number,
+        email,
+        preferences: { contact_via_email, contact_via_sms }
+      } = account;
 
-  const {
-    preferences: { contact_via_email, contact_via_sms }
-  } = account;
+      if (email && contact_via_email) {
+        await notifyWithEmail({
+          recipientEmail: email,
+          contactNature
+        });
+      }
 
-  if (contact_via_email) {
-    // Notify: Direct Email
-  }
-
-  if (contact_via_sms) {
-    // Notify: Direct SMS
-  }
-};
-export const notifyIndirect = (uid: string) => {};
+      if (sms_number && contact_via_sms) {
+        await notifyWithSMS({
+          phoneNumber: sms_number,
+          contactNature
+        });
+      }
+    });
+  });
