@@ -74,16 +74,5 @@ export const sendNotifications = functions
       payload
     );
 
-    const allContact = [
-      ...direct.map((id: string) => ({
-        id,
-        contactNature: ContactNature.Direct
-      })),
-      ...indirect.map((id: string) => ({
-        id,
-        contactNature: ContactNature.Indirect
-      }))
-    ];
-
     return Promise.all(notify(allContact));
   });
