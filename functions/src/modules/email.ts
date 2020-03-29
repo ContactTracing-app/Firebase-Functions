@@ -1,6 +1,9 @@
 import * as functions from 'firebase-functions';
 import nodemailer from 'nodemailer';
 import { ContactNature } from './graph';
+import cors from 'cors';
+
+cors({ origin: true });
 
 let transporter = nodemailer.createTransport({
   service: 'gmail',

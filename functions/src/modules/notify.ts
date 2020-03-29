@@ -24,9 +24,8 @@ export const retrieveAccountForUid = async (uid: string) => {
   return account;
 };
 
-export const sendNotifications = functions
-  .region('europe-west1')
-  .https.onCall(async (payload: sendNotifications) => {
+export const sendNotifications = functions.https.onCall(
+  async (payload: sendNotifications) => {
     const allContacts = await collectNotificationsFromGraph({
       uid: payload.uid
     });
@@ -61,4 +60,5 @@ export const sendNotifications = functions
         console.error(e);
       }
     });
-  });
+  }
+);
