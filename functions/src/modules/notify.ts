@@ -31,6 +31,8 @@ export const sendNotifications = functions
       uid: payload.uid
     });
 
+    return allContacts;
+
     allContacts.forEach(async ({ uid, contactNature }) => {
       const account = await retrieveAccountForUid(uid);
       if (!account) {

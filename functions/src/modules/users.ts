@@ -29,7 +29,7 @@ export const setupNewUser = functions
       email,
       preferences: {
         contact_via_email: true,
-        contact_via_sms: true
+        contact_via_sms: false
       }
     };
 

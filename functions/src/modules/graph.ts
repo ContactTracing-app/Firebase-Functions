@@ -40,9 +40,13 @@ export const registerUserWithGraph = (payload: registerUserWithGraph) => {
 
 // ********************************************************* //
 
+interface Person {
+  uid: string;
+}
+
 interface sendNotificationsPayload {
-  direct: string[];
-  indirect: string[];
+  direct: Person[];
+  indirect: Person[];
 }
 
 export enum ContactNature {
@@ -75,14 +79,14 @@ export const collectNotificationsFromGraph = async (payload: {
   );
 
   const allContacts = [
-    ...direct.map(
-      (uid: string) =>
-        ({ uid, contactNature: ContactNature.Direct } as Notification)
-    ),
-    ...indirect.map(
-      (uid: string) =>
-        ({ uid, contactNature: ContactNature.Indirect } as Notification)
-    )
+    ...direct.map(p => ({
+      uid: p.uid,
+      contactNature: ContactNature.Direct
+    })),
+    ...indirect.map(p => ({
+      uid: p.uid,
+      contactNature: ContactNature.Indirect
+    }))
   ];
 
   return allContacts;
