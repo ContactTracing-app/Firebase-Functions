@@ -7,7 +7,7 @@ const db = admin.database();
 
 export interface Account {
   email?: string;
-  sms_number?: string;
+  smsNumber?: string;
   preferences: {
     contact_via_email: boolean;
     contact_via_sms: boolean;

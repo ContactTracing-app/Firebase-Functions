@@ -31,32 +31,34 @@ export const sendNotifications = functions
       uid: payload.uid
     });
 
-    return allContacts;
-
     allContacts.forEach(async ({ uid, contactNature }) => {
-      const account = await retrieveAccountForUid(uid);
-      if (!account) {
-        return;
-      }
+      try {
+        const account = await retrieveAccountForUid(uid);
+        if (!account) {
+          return;
+        }
 
-      const {
-        sms_number,
-        email,
-        preferences: { contact_via_email, contact_via_sms }
-      } = account;
+        const {
+          email,
+          smsNumber,
+          preferences: { contact_via_sms, contact_via_email }
+        } = account;
 
-      if (email && contact_via_email) {
-        await notifyWithEmail({
-          recipientEmail: email,
-          contactNature
-        });
-      }
+        if (smsNumber && contact_via_sms) {
+          await notifyWithSMS({
+            phoneNumber: smsNumber,
+            contactNature
+          });
+        }
 
-      if (sms_number && contact_via_sms) {
-        await notifyWithSMS({
-          phoneNumber: sms_number,
-          contactNature
-        });
+        if (email && contact_via_email) {
+          await notifyWithEmail({
+            recipientEmail: email,
+            contactNature
+          });
+        }
+      } catch (e) {
+        console.error(e);
       }
     });
   });

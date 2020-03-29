@@ -14,11 +14,14 @@ interface testEmail {
   recipient_email: string;
 }
 
+const defaultMailOptions = {
+  from: `Contact Tracing app <no-reply@contacttracing.app>`
+};
 export const testEmail = functions
   .region('europe-west1')
   .https.onCall((data: testEmail) => {
     const mailOptions = {
-      from: `Your Account Name <yourgmailaccount@gmail.com>', // Something like: Jane Doe <janedoe@gmail.com>`,
+      ...defaultMailOptions,
       to: data.recipient_email,
       subject: "I'M A PICKLE!!!", // email subject
       html: `<p style="font-size: 16px;">Pickle Riiiiiiiiiiiiiiiick!!</p><br /><img src="https://images.prod.meredith.com/product/fc8754735c8a9b4aebb786278e7265a5/1538025388228/l/rick-and-morty-pickle-rick-sticker" />`
@@ -38,12 +41,24 @@ interface NotifyWithEmail {
 
 export const notifyWithEmail = (data: NotifyWithEmail) => {
   // TODO check direct/indirect
-  const mailOptions = {
-    from: `Contact Tracing <contacttracing.app@gmail.com>`,
-    to: data.recipientEmail,
-    subject: "I'M A PICKLE!!!", // email subject
-    html: `<p style="font-size: 16px;">Pickle Riiiiiiiiiiiiiiiick!!</p><br /><img src="https://images.prod.meredith.com/product/fc8754735c8a9b4aebb786278e7265a5/1538025388228/l/rick-and-morty-pickle-rick-sticker" />`
+
+  const commonMailOptions = {
+    to: data.recipientEmail
   };
+  const mailOptions =
+    data.contactNature === ContactNature.Direct
+      ? {
+          ...defaultMailOptions,
+          ...commonMailOptions,
+          subject: 'Michele testing - Direct Contact',
+          html: `Michele testing - Direct content here`
+        }
+      : {
+          ...defaultMailOptions,
+          ...commonMailOptions,
+          subject: 'Michele testing - Indirect Contact',
+          html: `Michele testing - InDirect content here`
+        };
 
   // returning result
   return transporter.sendMail(mailOptions, (err, info) => {
