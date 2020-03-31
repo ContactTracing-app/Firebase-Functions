@@ -1,7 +1,10 @@
 import * as functions from 'firebase-functions';
 import nodemailer from 'nodemailer';
-import { ContactNature } from './graph';
 import cors from 'cors';
+import Handlebars from 'handlebars/runtime';
+import { ContactNature } from '../graph';
+
+import './compiled.js';
 
 cors({ origin: true });
 
@@ -45,6 +48,10 @@ interface NotifyWithEmail {
 export const notifyWithEmail = (data: NotifyWithEmail) => {
   // TODO check direct/indirect
 
+  const variables = {
+    displayName: null
+  };
+
   const commonMailOptions = {
     to: data.recipientEmail
   };
@@ -53,14 +60,14 @@ export const notifyWithEmail = (data: NotifyWithEmail) => {
       ? {
           ...defaultMailOptions,
           ...commonMailOptions,
-          subject: 'Michele testing - Direct Contact',
-          html: `Michele testing - Direct content here`
+          subject: 'Contact Tracing - Direct Contact',
+          html: Handlebars.templates['direct.hbs'](variables)
         }
       : {
           ...defaultMailOptions,
           ...commonMailOptions,
-          subject: 'Michele testing - Indirect Contact',
-          html: `Michele testing - InDirect content here`
+          subject: 'Contact Tracing - Indirect Contact',
+          html: Handlebars.templates['indirect.hbs'](variables)
         };
 
   // returning result

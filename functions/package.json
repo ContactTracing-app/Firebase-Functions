@@ -1,12 +1,14 @@
 {
   "name": "functions",
   "scripts": {
+    "prebuild": "yarn run templates",
     "build": "tsc",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log",
     "serve": "npm run build && firebase emulators:start --only functions",
     "shell": "npm run build && firebase functions:shell",
     "start": "npm run shell",
-    "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "templates": "./node_modules/.bin/handlebars src/modules/email/*.hbs -f src/modules/email/compiled.js -o -c handlebars/runtime"
   },
   "engines": {
     "node": "8"
@@ -17,6 +19,7 @@
     "firebase-admin": "^8.6.0",
     "firebase-functions": "^3.3.0",
     "graphql-request": "^1.8.2",
+    "handlebars": "^4.7.3",
     "nodemailer": "^6.4.6",
     "twilio": "^3.41.1"
   },

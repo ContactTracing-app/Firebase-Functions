@@ -23,10 +23,12 @@ export const notifyWithSMS = async (data: notifyWithSMS) => {
   const DIRECT_MSG = `Time to stay strictly self-isolated for at least 14 days! You've been in contact with someone who is showing COVID-19 symptoms  – ContactTracing.app`;
   const INDIRECT_MSG = `Time to self-isolate! One of your friends and family has been in contact with someone who's showing signs of COVID-19 – ContactTracing.app`;
 
-  client.messages.create({
+  await client.messages.create({
     body:
       data.contactNature === ContactNature.Direct ? DIRECT_MSG : INDIRECT_MSG,
     from: '+12057977380',
-    to: `${functions.config().twilio.test_number}`
+    to: '+447590064042'
   });
+
+  return true;
 };
